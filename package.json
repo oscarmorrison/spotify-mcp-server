@@ -15,7 +15,7 @@
   },
   "files": ["build"],
   "keywords": [],
-  "author": "Marcel Marais",
+  "author": "Oscar Morrison",
   "description": "A Model Context Protocol server for Spotify integration",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.1",

@@ -3,6 +3,8 @@
 <h1>Spotify MCP Server</h1>
 </div>
 
+> **Fork** of [marcelmarais/spotify-mcp-server](https://github.com/marcelmarais/spotify-mcp-server) with additional tools, Spotify February 2026 API migration fixes, and playlist image editing support.
+
 A lightweight [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that enables AI assistants like Cursor & Claude to control Spotify playback and manage playlists.
 
 <details>
@@ -22,6 +24,31 @@ A lightweight [Model Context Protocol (MCP)](https://modelcontextprotocol.io) se
   - [Authentication Process](#authentication-process)
 - [Integrating with Claude Desktop, Cursor, and VsCode (Cline)](#integrating-with-claude-desktop-and-cursor)
 </details>
+
+## Changes from upstream
+
+### Spotify February 2026 API migration
+- Migrated `getPlaylistTracks` to the updated `GET /playlists/{id}/items` endpoint
+- Migrated playlist and library endpoints to use query params instead of JSON body for `PUT`/`DELETE`
+- Capped search results to 10 per updated API limits
+- Restored automatic token refresh
+
+### New tools
+- **getCurrentUserProfile** — fetch the authenticated user's profile (`GET /me`)
+- **getUserTopItems** — get the user's top tracks or artists (`GET /me/top/{type}`)
+- **getFollowedArtists** — list artists the user follows
+- **getSavedAudiobooks / getSavedEpisodes / getSavedShows** — read library content
+- **Metadata tools** — look up artists, tracks, shows, episodes, audiobooks, and chapters by ID
+- **seekToPosition** — seek to a timestamp in the current track
+- **setRepeatMode / toggleShuffle** — control repeat and shuffle state
+- **transferPlayback** — move playback to a different device
+- **followArtists** — follow or unfollow artists
+- **updatePlaylistImage** — upload a custom JPEG cover image for a playlist (`PUT /v1/playlists/{id}/images`, requires `ugc-image-upload` scope)
+
+### OAuth scopes added
+`user-follow-read`, `user-follow-modify`, `user-top-read`, `ugc-image-upload`
+
+---
 
 ## Example Interactions
 
@@ -290,6 +317,15 @@ A lightweight [Model Context Protocol (MCP)](https://modelcontextprotocol.io) se
    - **Returns**: Success confirmation with the move details
    - **Example**: `reorderPlaylistItems({ playlistId: "3cEYpjA9oz9GiPac4AsH4n", rangeStart: 2, insertBefore: 0 })`
 
+5. **updatePlaylistImage**
+
+   - **Description**: Upload a custom cover image for a Spotify playlist. JPEG only; base64-encoded string must be under 256 KB (source JPEG ~190 KB or less). Requires the `ugc-image-upload` OAuth scope.
+   - **Parameters**:
+     - `playlistId` (string): The Spotify ID of the playlist
+     - `imageBase64` (string): Raw base64-encoded JPEG data (no `data:` prefix, no JSON wrapper)
+   - **Returns**: Success confirmation (Spotify processes the image asynchronously — it may take a few seconds to appear)
+   - **Example**: `updatePlaylistImage({ playlistId: "3cEYpjA9oz9GiPac4AsH4n", imageBase64: "<base64string>" })`
+
 ## Setup
 
 ### Prerequisites
@@ -301,7 +337,7 @@ A lightweight [Model Context Protocol (MCP)](https://modelcontextprotocol.io) se
 ### Installation
 
 ```bash
-git clone https://github.com/marcelmarais/spotify-mcp-server.git
+git clone https://github.com/oscarmorrison/spotify-mcp-server.git
 cd spotify-mcp-server
 npm install
 npm run build

@@ -210,6 +210,7 @@ export async function authorizeSpotify(): Promise<void> {
     'user-follow-read',
     'user-follow-modify',
     'user-top-read',
+    'ugc-image-upload',
   ];
 
   const authParams = new URLSearchParams({

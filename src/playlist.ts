@@ -321,9 +321,83 @@ const reorderPlaylistItems: tool<{
   },
 };
 
+const updatePlaylistImage: tool<{
+  playlistId: z.ZodString;
+  imageBase64: z.ZodString;
+}> = {
+  name: 'updatePlaylistImage',
+  description:
+    'Update the cover image of a Spotify playlist. Requires a base64-encoded JPEG string. The encoded string must be under 256 KB (source JPEG should be ~190 KB or less). JPEG only — PNG/WebP will be rejected.',
+  schema: {
+    playlistId: z.string().describe('The Spotify ID of the playlist'),
+    imageBase64: z
+      .string()
+      .describe(
+        'Base64-encoded JPEG image data (raw string, no data: prefix, no JSON wrapper). Max 256 KB encoded.',
+      ),
+  },
+  handler: async (args, _extra: SpotifyHandlerExtra) => {
+    const { playlistId, imageBase64 } = args;
+
+    const MAX_BYTES = 256 * 1024;
+    if (imageBase64.length > MAX_BYTES) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: Base64 image exceeds 256 KB limit (${imageBase64.length} bytes). Compress the source JPEG to ~190 KB or less before encoding.`,
+          },
+        ],
+      };
+    }
+
+    try {
+      const config = await getValidConfig();
+
+      const response = await fetch(
+        `https://api.spotify.com/v1/playlists/${playlistId}/images`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${config.accessToken}`,
+            'Content-Type': 'image/jpeg',
+          },
+          body: imageBase64,
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Spotify API error ${response.status}: ${errorData}`);
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Successfully updated cover image for playlist (ID: ${playlistId}). The new image may take a few seconds to appear.`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error updating playlist image: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          },
+        ],
+      };
+    }
+  },
+};
+
 export const playlistTools = [
   getPlaylist,
   updatePlaylist,
   removeTracksFromPlaylist,
   reorderPlaylistItems,
+  updatePlaylistImage,
 ];
