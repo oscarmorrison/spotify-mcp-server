@@ -3,54 +3,42 @@
 <h1>Spotify MCP Server</h1>
 </div>
 
-> **Fork** of [marcelmarais/spotify-mcp-server](https://github.com/marcelmarais/spotify-mcp-server) with additional tools, Spotify February 2026 API migration fixes, and playlist image editing support.
+A lightweight [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that lets AI assistants like Claude, Cursor, and Cline control Spotify playback and manage playlists.
 
-A lightweight [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that enables AI assistants like Cursor & Claude to control Spotify playback and manage playlists.
+> Fork of [marcelmarais/spotify-mcp-server](https://github.com/marcelmarais/spotify-mcp-server) with additional tools, Spotify February 2026 API migration fixes, and playlist cover image editing.
 
-<details>
-<summary>Contents</summary>
+## Quick Start
 
-- [Example Interactions](#example-interactions)
-- [Tools](#tools)
-  - [Read Operations](#read-operations)
-  - [Album Operations](#album-operations)
-  - [Play / Create Operations](#play--create-operations)
-  - [Playlist Operations](#playlist-operations)
-- [Setup](#setup)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Creating a Spotify Developer Application](#creating-a-spotify-developer-application)
-  - [Spotify API Configuration](#spotify-api-configuration)
-  - [Authentication Process](#authentication-process)
-- [Integrating with Claude Desktop, Cursor, and VsCode (Cline)](#integrating-with-claude-desktop-and-cursor)
-</details>
+```bash
+# 1. Clone and build
+git clone https://github.com/oscarmorrison/spotify-mcp-server.git
+cd spotify-mcp-server
+npm install && npm run build
 
-## Changes from upstream
+# 2. Add Spotify credentials
+cp spotify-config.example.json spotify-config.json
+# edit spotify-config.json with your clientId / clientSecret
 
-### Spotify February 2026 API migration
-- Migrated `getPlaylistTracks` to the updated `GET /playlists/{id}/items` endpoint
-- Migrated playlist and library endpoints to use query params instead of JSON body for `PUT`/`DELETE`
-- Capped search results to 10 per updated API limits
-- Restored automatic token refresh
+# 3. Authenticate (opens browser, saves tokens back to spotify-config.json)
+npm run auth
+```
 
-### New tools
-- **getCurrentUserProfile** — fetch the authenticated user's profile (`GET /me`)
-- **getUserTopItems** — get the user's top tracks or artists (`GET /me/top/{type}`)
-- **getFollowedArtists** — list artists the user follows
-- **getSavedAudiobooks / getSavedEpisodes / getSavedShows** — read library content
-- **Metadata tools** — look up artists, tracks, shows, episodes, audiobooks, and chapters by ID
-- **seekToPosition** — seek to a timestamp in the current track
-- **setRepeatMode / toggleShuffle** — control repeat and shuffle state
-- **transferPlayback** — move playback to a different device
-- **followArtists** — follow or unfollow artists
-- **updatePlaylistImage** — upload a custom JPEG cover image for a playlist (`PUT /v1/playlists/{id}/images`, requires `ugc-image-upload` scope)
+Then add the server to your MCP client (see [Client setup](#client-setup) below):
 
-### OAuth scopes added
-`user-follow-read`, `user-follow-modify`, `user-top-read`, `ugc-image-upload`
+```json
+{
+  "mcpServers": {
+    "spotify": {
+      "command": "node",
+      "args": ["/absolute/path/to/spotify-mcp-server/build/index.js"]
+    }
+  }
+}
+```
 
----
+**Requirements:** Node.js v16+, a Spotify Premium account, and a [Spotify developer app](#creating-a-spotify-developer-application) with redirect URI `http://127.0.0.1:8888/callback`.
 
-## Example Interactions
+## Example prompts
 
 - _"Play Elvis's first song"_
 - _"Create a Taylor Swift / Slipknot fusion playlist"_
@@ -59,312 +47,88 @@ A lightweight [Model Context Protocol (MCP)](https://modelcontextprotocol.io) se
 
 ## Tools
 
-### Read Operations
+<details>
+<summary><strong>Playback & queue</strong> — play, pause, skip, seek, shuffle, repeat, volume, devices, queue</summary>
 
-1. **searchSpotify**
+| Tool | Description |
+| --- | --- |
+| `playMusic` | Play a track/album/artist/playlist by URI or `type` + `id`. Optional `deviceId`. |
+| `pausePlayback` / `resumePlayback` | Pause or resume current playback. |
+| `skipToNext` / `skipToPrevious` | Move within the current queue. |
+| `seekToPosition` | Seek to a timestamp in the current track. |
+| `setRepeatMode` | Set repeat to `track`, `context`, or `off`. |
+| `toggleShuffle` | Toggle shuffle on/off. |
+| `setVolume` | Set absolute volume `0–100` (Premium). |
+| `adjustVolume` | Adjust volume by relative `-100..100` (Premium). |
+| `addToQueue` | Queue a track/album/artist/playlist by URI or `type` + `id`. |
+| `getQueue` | Current track + upcoming items (limit 1–50). |
+| `getNowPlaying` | Current track, device, volume, shuffle/repeat state. |
+| `getAvailableDevices` | List Spotify Connect devices. |
+| `transferPlayback` | Move playback to another device. |
 
-   - **Description**: Search for tracks, albums, artists, or playlists on Spotify
-   - **Parameters**:
-     - `query` (string): The search term
-     - `type` (string): Type of item to search for (track, album, artist, playlist)
-     - `limit` (number, optional): Maximum number of results to return (10-50)
-   - **Returns**: List of matching items with their IDs, names, and additional details
-   - **Example**: `searchSpotify("bohemian rhapsody", "track", 20)`
+</details>
 
-2. **getNowPlaying**
+<details>
+<summary><strong>Library & search</strong> — search, liked songs, saved albums/shows/episodes/audiobooks, recently played, top items, followed artists</summary>
 
-   - **Description**: Get information about the currently playing track on Spotify, including device and volume info
-   - **Parameters**: None
-   - **Returns**: Object containing track name, artist, album, playback progress, duration, playback state, device info, volume, and shuffle/repeat status
-   - **Example**: `getNowPlaying()`
+| Tool | Description |
+| --- | --- |
+| `searchSpotify` | Search tracks/albums/artists/playlists (max 10 results — Feb 2026 API cap). |
+| `getRecentlyPlayed` | Recently played tracks. |
+| `getUsersSavedTracks` | Liked Songs (paginated, 1–50). |
+| `removeUsersSavedTracks` | Remove up to 40 tracks from Liked Songs. |
+| `getCurrentUserProfile` | The authenticated user's profile (`GET /me`). |
+| `getUserTopItems` | Top tracks or artists. |
+| `getFollowedArtists` | Artists the user follows. |
+| `followArtists` | Follow or unfollow artists. |
+| `getSavedShows` / `getSavedEpisodes` / `getSavedAudiobooks` | Library content for podcasts and audiobooks. |
+| Metadata lookups | `getArtists`, `getTracks`, `getShows`, `getEpisodes`, `getAudiobooks`, `getChapters`. |
 
-3. **getMyPlaylists**
+</details>
 
-   - **Description**: Get a list of the current user's playlists on Spotify
-   - **Parameters**:
-     - `limit` (number, optional): Maximum number of playlists to return (default: 20)
-     - `offset` (number, optional): Index of the first playlist to return (default: 0)
-   - **Returns**: Array of playlists with their IDs, names, track counts, and public status
-   - **Example**: `getMyPlaylists(10, 0)`
+<details>
+<summary><strong>Albums</strong> — details, tracks, save/remove, saved status</summary>
 
-4. **getPlaylistTracks**
+| Tool | Description |
+| --- | --- |
+| `getAlbums` | Details for one ID or up to 20 IDs. |
+| `getAlbumTracks` | Paginated tracks (1–50) for an album. |
+| `saveOrRemoveAlbumForUser` | Save or remove up to 20 albums in "Your Music". |
+| `checkUsersSavedAlbums` | Check saved status for up to 20 album IDs. |
 
-   - **Description**: Get a list of tracks in a specific Spotify playlist
-   - **Parameters**:
-     - `playlistId` (string): The Spotify ID of the playlist
-     - `limit` (number, optional): Maximum number of tracks to return (default: 100)
-     - `offset` (number, optional): Index of the first track to return (default: 0)
-   - **Returns**: Array of tracks with their IDs, names, artists, album, duration, and added date
-   - **Example**: `getPlaylistTracks("37i9dQZEVXcJZyENOWUFo7")`
+</details>
 
-5. **getRecentlyPlayed**
+<details>
+<summary><strong>Playlists</strong> — list, create, edit metadata, add/remove/reorder tracks, custom cover image</summary>
 
-   - **Description**: Retrieves a list of recently played tracks from Spotify.
-   - **Parameters**:
-     - `limit` (number, optional): A number specifying the maximum number of tracks to return.
-   - **Returns**: If tracks are found it returns a formatted list of recently played tracks else a message stating: "You don't have any recently played tracks on Spotify".
-   - **Example**: `getRecentlyPlayed({ limit: 10 })`
+| Tool | Description |
+| --- | --- |
+| `getMyPlaylists` | The user's playlists (paginated). |
+| `getPlaylist` | Playlist details: name, owner, track count, description, URL. |
+| `getPlaylistTracks` | Paginated tracks for a playlist. |
+| `createPlaylist` | Create a new playlist (`name`, optional `description`, `public`). |
+| `updatePlaylist` | Update `name` / `description` / `public` / `collaborative`. |
+| `addTracksToPlaylist` | Add track URIs (optional `position`). |
+| `removeTracksFromPlaylist` | Remove up to 100 tracks. |
+| `reorderPlaylistItems` | Move a range to a new position. |
+| `updatePlaylistImage` | Upload a custom JPEG cover (base64, <256 KB; requires `ugc-image-upload` scope). |
 
-6. **getUsersSavedTracks**
-
-   - **Description**: Get a list of tracks saved in the user's "Liked Songs" library
-   - **Parameters**:
-     - `limit` (number, optional): Maximum number of tracks to return (1-50, default: 50)
-     - `offset` (number, optional): Offset for pagination (0-based index, default: 0)
-   - **Returns**: Formatted list of saved tracks with track names, artists, duration, track IDs, and when they were added to Liked Songs. Shows pagination info (e.g., "1-20 of 150").
-   - **Example**: `getUsersSavedTracks({ limit: 20, offset: 0 })`
-
-7. **getQueue**
-
-   - **Description**: Get the currently playing track and upcoming items in the Spotify queue
-   - **Parameters**:
-     - `limit` (number, optional): Maximum number of upcoming items to show (1-50, default: 10)
-   - **Returns**: Currently playing track and list of upcoming tracks in the queue
-   - **Example**: `getQueue({ limit: 20 })`
-
-8. **getAvailableDevices**
-
-   - **Description**: Get information about the user's available Spotify Connect devices
-   - **Parameters**: None
-   - **Returns**: List of available devices with name, type, active status, volume, and device ID
-   - **Example**: `getAvailableDevices()`
-
-9. **removeUsersSavedTracks**
-
-   - **Description**: Remove one or more tracks from the user's "Liked Songs" library (max 40 per request)
-   - **Parameters**:
-     - `trackIds` (array): Array of Spotify track IDs to remove (max 40)
-   - **Returns**: Success confirmation message
-   - **Example**: `removeUsersSavedTracks({ trackIds: ["4iV5W9uYEdYUVa79Axb7Rh", "1301WleyT98MSxVHPZCA6M"] })`
-
-
-### Play / Create Operations
-
-1. **playMusic**
-
-   - **Description**: Start playing a track, album, artist, or playlist on Spotify
-   - **Parameters**:
-     - `uri` (string, optional): Spotify URI of the item to play (overrides type and id)
-     - `type` (string, optional): Type of item to play (track, album, artist, playlist)
-     - `id` (string, optional): Spotify ID of the item to play
-     - `deviceId` (string, optional): ID of the device to play on
-   - **Returns**: Success status
-   - **Example**: `playMusic({ uri: "spotify:track:6rqhFgbbKwnb9MLmUQDhG6" })`
-   - **Alternative**: `playMusic({ type: "track", id: "6rqhFgbbKwnb9MLmUQDhG6" })`
-
-2. **pausePlayback**
-
-   - **Description**: Pause the currently playing track on Spotify
-   - **Parameters**:
-     - `deviceId` (string, optional): ID of the device to pause
-   - **Returns**: Success status
-   - **Example**: `pausePlayback()`
-
-3. **resumePlayback**
-
-   - **Description**: Resume Spotify playback on the active device
-   - **Parameters**:
-     - `deviceId` (string, optional): ID of the device to resume playback on
-   - **Returns**: Success status
-   - **Example**: `resumePlayback()`
-
-4. **skipToNext**
-
-   - **Description**: Skip to the next track in the current playback queue
-   - **Parameters**:
-     - `deviceId` (string, optional): ID of the device
-   - **Returns**: Success status
-   - **Example**: `skipToNext()`
-
-5. **skipToPrevious**
-
-   - **Description**: Skip to the previous track in the current playback queue
-   - **Parameters**:
-     - `deviceId` (string, optional): ID of the device
-   - **Returns**: Success status
-   - **Example**: `skipToPrevious()`
-
-6. **createPlaylist**
-
-   - **Description**: Create a new playlist on Spotify
-   - **Parameters**:
-     - `name` (string): Name for the new playlist
-     - `description` (string, optional): Description for the playlist
-     - `public` (boolean, optional): Whether the playlist should be public (default: false)
-   - **Returns**: Object with the new playlist's ID and URL
-   - **Example**: `createPlaylist({ name: "Workout Mix", description: "Songs to get pumped up", public: false })`
-
-7. **addTracksToPlaylist**
-
-   - **Description**: Add tracks to an existing Spotify playlist
-   - **Parameters**:
-     - `playlistId` (string): ID of the playlist
-     - `trackUris` (array): Array of track URIs or IDs to add
-     - `position` (number, optional): Position to insert tracks
-   - **Returns**: Success status and snapshot ID
-   - **Example**: `addTracksToPlaylist({ playlistId: "3cEYpjA9oz9GiPac4AsH4n", trackUris: ["spotify:track:4iV5W9uYEdYUVa79Axb7Rh"] })`
-
-8. **addToQueue**
-
-   - **Description**: Adds a track, album, artist or playlist to the current playback queue
-   - **Parameters**:
-     - `uri` (string, optional): Spotify URI of the item to add to queue (overrides type and id)
-     - `type` (string, optional): Type of item to queue (track, album, artist, playlist)
-     - `id` (string, optional): Spotify ID of the item to queue
-     - `deviceId` (string, optional): ID of the device to queue on
-   - **Returns**: Success status
-   - **Example**: `addToQueue({ uri: "spotify:track:6rqhFgbbKwnb9MLmUQDhG6" })`
-   - **Alternative**: `addToQueue({ type: "track", id: "6rqhFgbbKwnb9MLmUQDhG6" })`
-
-9. **setVolume**
-
-   - **Description**: Set the playback volume to a specific percentage (requires Spotify Premium)
-   - **Parameters**:
-     - `volumePercent` (number): The volume to set (0-100)
-     - `deviceId` (string, optional): ID of the device to set volume on
-   - **Returns**: Success status with the new volume level
-   - **Example**: `setVolume({ volumePercent: 50 })`
-
-10. **adjustVolume**
-
-   - **Description**: Adjust the playback volume up or down by a relative amount (requires Spotify Premium)
-   - **Parameters**:
-     - `adjustment` (number): The amount to adjust volume by (-100 to 100). Positive values increase volume, negative values decrease it.
-     - `deviceId` (string, optional): ID of the device to adjust volume on
-   - **Returns**: Success status showing the volume change (e.g., "Volume increased from 50% to 60%")
-   - **Example**: `adjustVolume({ adjustment: 10 })` (increase by 10%)
-   - **Example**: `adjustVolume({ adjustment: -20 })` (decrease by 20%)
-
-
-### Album Operations
-
-1. **getAlbums**
-
-   - **Description**: Get detailed information about one or more albums by their Spotify IDs
-   - **Parameters**:
-     - `albumIds` (string|array): A single album ID or array of album IDs (max 20)
-   - **Returns**: Album details including name, artists, release date, type, total tracks, and ID. For single album returns detailed view, for multiple albums returns summary list.
-   - **Example**: `getAlbums("4aawyAB9vmqN3uQ7FjRGTy")` or `getAlbums(["4aawyAB9vmqN3uQ7FjRGTy", "1DFixLWuPkv3KT3TnV35m3"])`
-
-2. **getAlbumTracks**
-
-   - **Description**: Get tracks from a specific album with pagination support
-   - **Parameters**:
-     - `albumId` (string): The Spotify ID of the album
-     - `limit` (number, optional): Maximum number of tracks to return (1-50)
-     - `offset` (number, optional): Offset for pagination (0-based index)
-   - **Returns**: List of tracks from the album with track names, artists, duration, and IDs. Shows pagination info.
-   - **Example**: `getAlbumTracks("4aawyAB9vmqN3uQ7FjRGTy", 10, 0)`
-
-3. **saveOrRemoveAlbumForUser**
-
-   - **Description**: Save or remove albums from the user's "Your Music" library
-   - **Parameters**:
-     - `albumIds` (array): Array of Spotify album IDs (max 20)
-     - `action` (string): Action to perform: "save" or "remove"
-   - **Returns**: Success status with confirmation message
-   - **Example**: `saveOrRemoveAlbumForUser(["4aawyAB9vmqN3uQ7FjRGTy"], "save")`
-
-4. **checkUsersSavedAlbums**
-
-   - **Description**: Check if albums are saved in the user's "Your Music" library
-   - **Parameters**:
-     - `albumIds` (array): Array of Spotify album IDs to check (max 20)
-   - **Returns**: Status of each album (saved or not saved)
-   - **Example**: `checkUsersSavedAlbums(["4aawyAB9vmqN3uQ7FjRGTy", "1DFixLWuPkv3KT3TnV35m3"])`
-
-### Playlist Operations
-
-1. **getPlaylist**
-
-   - **Description**: Get details of a specific Spotify playlist including tracks count, description and owner
-   - **Parameters**:
-     - `playlistId` (string): The Spotify ID of the playlist
-   - **Returns**: Playlist name, owner, track count, visibility, description, ID, and URL
-   - **Example**: `getPlaylist({ playlistId: "37i9dQZEVXcJZyENOWUFo7" })`
-
-2. **updatePlaylist**
-
-   - **Description**: Update the details of a Spotify playlist (name, description, public/private, collaborative)
-   - **Parameters**:
-     - `playlistId` (string): The Spotify ID of the playlist
-     - `name` (string, optional): New name for the playlist
-     - `description` (string, optional): New description for the playlist
-     - `public` (boolean, optional): Whether the playlist should be public
-     - `collaborative` (boolean, optional): Whether the playlist should be collaborative (requires public to be false)
-   - **Returns**: Success confirmation with list of updated fields
-   - **Example**: `updatePlaylist({ playlistId: "3cEYpjA9oz9GiPac4AsH4n", name: "New Name", public: true })`
-
-3. **removeTracksFromPlaylist**
-
-   - **Description**: Remove one or more tracks from a Spotify playlist (max 100 tracks per request)
-   - **Parameters**:
-     - `playlistId` (string): The Spotify ID of the playlist
-     - `trackIds` (array): Array of Spotify track IDs to remove (max 100)
-     - `snapshotId` (string, optional): The playlist snapshot ID to target a specific version
-   - **Returns**: Success confirmation with the number of tracks removed
-   - **Example**: `removeTracksFromPlaylist({ playlistId: "3cEYpjA9oz9GiPac4AsH4n", trackIds: ["4iV5W9uYEdYUVa79Axb7Rh"] })`
-
-4. **reorderPlaylistItems**
-
-   - **Description**: Reorder a range of tracks within a Spotify playlist by moving them to a new position
-   - **Parameters**:
-     - `playlistId` (string): The Spotify ID of the playlist
-     - `rangeStart` (number): The position of the first item to move (0-based index)
-     - `insertBefore` (number): The position where the items should be inserted (0-based index)
-     - `rangeLength` (number, optional): Number of consecutive items to move (defaults to 1)
-     - `snapshotId` (string, optional): The playlist snapshot ID to target a specific version
-   - **Returns**: Success confirmation with the move details
-   - **Example**: `reorderPlaylistItems({ playlistId: "3cEYpjA9oz9GiPac4AsH4n", rangeStart: 2, insertBefore: 0 })`
-
-5. **updatePlaylistImage**
-
-   - **Description**: Upload a custom cover image for a Spotify playlist. JPEG only; base64-encoded string must be under 256 KB (source JPEG ~190 KB or less). Requires the `ugc-image-upload` OAuth scope.
-   - **Parameters**:
-     - `playlistId` (string): The Spotify ID of the playlist
-     - `imageBase64` (string): Raw base64-encoded JPEG data (no `data:` prefix, no JSON wrapper)
-   - **Returns**: Success confirmation (Spotify processes the image asynchronously — it may take a few seconds to appear)
-   - **Example**: `updatePlaylistImage({ playlistId: "3cEYpjA9oz9GiPac4AsH4n", imageBase64: "<base64string>" })`
+</details>
 
 ## Setup
 
-### Prerequisites
-
-- Node.js v16+
-- A Spotify Premium account
-- A registered Spotify Developer application
-
-### Installation
-
-```bash
-git clone https://github.com/oscarmorrison/spotify-mcp-server.git
-cd spotify-mcp-server
-npm install
-npm run build
-```
-
 ### Creating a Spotify Developer Application
 
-1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)
-2. Log in with your Spotify account
-3. Click the "Create an App" button
-4. Fill in the app name and description
-5. Accept the Terms of Service and click "Create"
-6. In your new app's dashboard, you'll see your **Client ID**
-7. Click "Show Client Secret" to reveal your **Client Secret**
-8. Click "Edit Settings" and add a Redirect URI (e.g., `http://127.0.0.1:8888/callback`)
-9. Save your changes
+1. Open the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/) and log in.
+2. Click **Create an App** and fill in the name and description.
+3. From the app's page, copy the **Client ID** and reveal the **Client Secret**.
+4. Click **Edit Settings** and add `http://127.0.0.1:8888/callback` as a Redirect URI.
 
-### Spotify API Configuration
-
-Create a `spotify-config.json` file in the project root (you can copy and modify the provided example):
+### Configure credentials
 
 ```bash
-# Copy the example config file
 cp spotify-config.example.json spotify-config.json
 ```
-
-Then edit the file with your credentials:
 
 ```json
 {
@@ -374,74 +138,59 @@ Then edit the file with your credentials:
 }
 ```
 
-### Authentication Process
-
-The Spotify API uses OAuth 2.0 for authentication. Follow these steps to authenticate your application:
-
-1. Run the authentication script:
+### Authenticate
 
 ```bash
 npm run auth
 ```
 
-2. The script will generate an authorization URL. Open this URL in your web browser.
+The script prints an authorization URL — open it, approve, and Spotify redirects back to the local callback. Access and refresh tokens are written back to `spotify-config.json`. **Tokens refresh automatically;** re-run `npm run auth` only if the refresh fails.
 
-3. You'll be prompted to log in to Spotify and authorize your application.
+### Client setup
 
-4. After authorization, Spotify will redirect you to your specified redirect URI with a code parameter in the URL.
-
-5. The authentication script will automatically exchange this code for access and refresh tokens.
-
-6. These tokens will be saved to your `spotify-config.json` file, which will now look something like:
-
-```json
-{
-  "clientId": "your-client-id",
-  "clientSecret": "your-client-secret",
-  "redirectUri": "http://localhost:8888/callback",
-  "accessToken": "BQAi9Pn...kKQ",
-  "refreshToken": "AQDQcj...7w",
-  "expiresAt": 1677889354671
-}
-```
-
-**Note**: The `expiresAt` field is a Unix timestamp (in milliseconds) indicating when the access token expires.
-
-7. **Automatic Token Refresh**: The server will automatically refresh the access token when it expires (typically after 1 hour). The refresh happens transparently using the `refreshToken`, so you don't need to re-authenticate manually. If the refresh fails, you'll need to run `npm run auth` again to re-authenticate.
-
-## Integrating with Claude Desktop, Cursor, and VsCode [Via Cline model extension](https://marketplace.visualstudio.com/items/?itemName=saoudrizwan.claude-dev)
-
-To use your MCP server with Claude Desktop, add it to your Claude configuration:
+**Claude Desktop** — add to your `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "spotify": {
       "command": "node",
-      "args": ["spotify-mcp-server/build/index.js"]
+      "args": ["/absolute/path/to/spotify-mcp-server/build/index.js"]
     }
   }
 }
 ```
 
-For Cursor, go to the MCP tab in `Cursor Settings` (command + shift + J). Add a server with this command:
+**Cursor** — `Cursor Settings` → **MCP** (⌘⇧J), add a server with command:
 
 ```bash
-node path/to/spotify-mcp-server/build/index.js
+node /absolute/path/to/spotify-mcp-server/build/index.js
 ```
 
-To set up your MCP correctly with Cline ensure you have the following file configuration set `cline_mcp_settings.json`:
+**Cline (VS Code)** — in `cline_mcp_settings.json`:
 
 ```json
 {
   "mcpServers": {
     "spotify": {
       "command": "node",
-      "args": ["~/../spotify-mcp-server/build/index.js"],
-      "autoApprove": ["getListeningHistory", "getNowPlaying"]
+      "args": ["/absolute/path/to/spotify-mcp-server/build/index.js"],
+      "autoApprove": ["getNowPlaying", "getRecentlyPlayed"]
     }
   }
 }
 ```
 
-You can add additional tools to the auto approval array to run the tools without intervention.
+Add more tools to `autoApprove` to skip per-call confirmation.
+
+## Changes from upstream
+
+**Spotify February 2026 API migration**
+- `getPlaylistTracks` updated to `GET /playlists/{id}/items`
+- Playlist and library `PUT`/`DELETE` endpoints now use query params instead of JSON bodies
+- Search results capped at 10 per updated API limits
+- Restored automatic token refresh
+
+**New tools** — `getCurrentUserProfile`, `getUserTopItems`, `getFollowedArtists`, `followArtists`, `getSavedAudiobooks`, `getSavedEpisodes`, `getSavedShows`, metadata lookups for artists/tracks/shows/episodes/audiobooks/chapters, `seekToPosition`, `setRepeatMode`, `toggleShuffle`, `transferPlayback`, `updatePlaylistImage`.
+
+**OAuth scopes added** — `user-follow-read`, `user-follow-modify`, `user-top-read`, `ugc-image-upload`.
