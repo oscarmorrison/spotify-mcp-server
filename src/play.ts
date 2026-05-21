@@ -552,7 +552,10 @@ const seekToPosition: tool<{
   name: 'seekToPosition',
   description: 'Seek to a position in the currently playing track',
   schema: {
-    positionMs: z.number().nonnegative().describe('Position in milliseconds to seek to'),
+    positionMs: z
+      .number()
+      .nonnegative()
+      .describe('Position in milliseconds to seek to'),
     deviceId: z.string().optional().describe('Device ID to target (optional)'),
   },
   handler: async (args, _extra: SpotifyHandlerExtra) => {
@@ -561,9 +564,20 @@ const seekToPosition: tool<{
       await handleSpotifyRequest(async (spotifyApi) => {
         await spotifyApi.player.seekToPosition(positionMs, deviceId);
       });
-      return { content: [{ type: 'text', text: `Seeked to ${Math.floor(positionMs / 1000)}s` }] };
+      return {
+        content: [
+          { type: 'text', text: `Seeked to ${Math.floor(positionMs / 1000)}s` },
+        ],
+      };
     } catch (error) {
-      return { content: [{ type: 'text', text: `Error seeking: ${error instanceof Error ? error.message : String(error)}` }] };
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error seeking: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
     }
   },
 };
@@ -573,9 +587,12 @@ const setRepeatMode: tool<{
   deviceId: z.ZodOptional<z.ZodString>;
 }> = {
   name: 'setRepeatMode',
-  description: "Set repeat mode: 'track' repeats the current track, 'context' repeats the current album/playlist, 'off' disables repeat",
+  description:
+    "Set repeat mode: 'track' repeats the current track, 'context' repeats the current album/playlist, 'off' disables repeat",
   schema: {
-    state: z.enum(['track', 'context', 'off']).describe("Repeat mode: 'track', 'context', or 'off'"),
+    state: z
+      .enum(['track', 'context', 'off'])
+      .describe("Repeat mode: 'track', 'context', or 'off'"),
     deviceId: z.string().optional().describe('Device ID to target (optional)'),
   },
   handler: async (args, _extra: SpotifyHandlerExtra) => {
@@ -584,9 +601,18 @@ const setRepeatMode: tool<{
       await handleSpotifyRequest(async (spotifyApi) => {
         await spotifyApi.player.setRepeatMode(state, deviceId);
       });
-      return { content: [{ type: 'text', text: `Repeat mode set to: ${state}` }] };
+      return {
+        content: [{ type: 'text', text: `Repeat mode set to: ${state}` }],
+      };
     } catch (error) {
-      return { content: [{ type: 'text', text: `Error setting repeat mode: ${error instanceof Error ? error.message : String(error)}` }] };
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error setting repeat mode: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
     }
   },
 };
@@ -607,9 +633,20 @@ const toggleShuffle: tool<{
       await handleSpotifyRequest(async (spotifyApi) => {
         await spotifyApi.player.togglePlaybackShuffle(state, deviceId);
       });
-      return { content: [{ type: 'text', text: `Shuffle ${state ? 'enabled' : 'disabled'}` }] };
+      return {
+        content: [
+          { type: 'text', text: `Shuffle ${state ? 'enabled' : 'disabled'}` },
+        ],
+      };
     } catch (error) {
-      return { content: [{ type: 'text', text: `Error toggling shuffle: ${error instanceof Error ? error.message : String(error)}` }] };
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error toggling shuffle: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
     }
   },
 };
@@ -621,8 +658,15 @@ const transferPlayback: tool<{
   name: 'transferPlayback',
   description: 'Transfer playback to a different device',
   schema: {
-    deviceId: z.string().describe('The ID of the device to transfer playback to'),
-    play: z.boolean().optional().describe('Whether to ensure playback starts on the new device (default: keep current state)'),
+    deviceId: z
+      .string()
+      .describe('The ID of the device to transfer playback to'),
+    play: z
+      .boolean()
+      .optional()
+      .describe(
+        'Whether to ensure playback starts on the new device (default: keep current state)',
+      ),
   },
   handler: async (args, _extra: SpotifyHandlerExtra) => {
     const { deviceId, play } = args;
@@ -630,9 +674,20 @@ const transferPlayback: tool<{
       await handleSpotifyRequest(async (spotifyApi) => {
         await spotifyApi.player.transferPlayback([deviceId], play);
       });
-      return { content: [{ type: 'text', text: `Playback transferred to device: ${deviceId}` }] };
+      return {
+        content: [
+          { type: 'text', text: `Playback transferred to device: ${deviceId}` },
+        ],
+      };
     } catch (error) {
-      return { content: [{ type: 'text', text: `Error transferring playback: ${error instanceof Error ? error.message : String(error)}` }] };
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error transferring playback: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
     }
   },
 };

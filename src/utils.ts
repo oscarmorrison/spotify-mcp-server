@@ -84,7 +84,7 @@ async function refreshAccessToken(
 export async function getValidConfig(): Promise<SpotifyConfig> {
   const config = loadSpotifyConfig();
 
-  if (!config.accessToken || !config.refreshToken) {
+  if (!(config.accessToken && config.refreshToken)) {
     throw new Error(
       'No user tokens found. Please run "npm run auth" to authenticate.',
     );
@@ -107,11 +107,16 @@ export async function createSpotifyApi(): Promise<SpotifyApi> {
   const config = await getValidConfig();
 
   const now = Date.now();
+  if (!(config.accessToken && config.refreshToken)) {
+    throw new Error(
+      'No user tokens found. Please run "npm run auth" to authenticate.',
+    );
+  }
   const accessToken = {
-    access_token: config.accessToken!,
+    access_token: config.accessToken,
     token_type: 'Bearer',
     expires_in: Math.floor(((config.expiresAt ?? now + 3600000) - now) / 1000),
-    refresh_token: config.refreshToken!,
+    refresh_token: config.refreshToken,
   };
   return SpotifyApi.withAccessToken(config.clientId, accessToken);
 }
@@ -170,7 +175,6 @@ async function exchangeCodeForToken(
     expires_in: data.expires_in || 3600,
   };
 }
-
 
 export async function authorizeSpotify(): Promise<void> {
   const config = loadSpotifyConfig();

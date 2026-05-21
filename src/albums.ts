@@ -1,7 +1,11 @@
 import type { MaxInt } from '@spotify/web-api-ts-sdk';
 import { z } from 'zod';
 import type { SpotifyHandlerExtra, tool } from './types.js';
-import { formatDuration, getValidConfig, handleSpotifyRequest } from './utils.js';
+import {
+  formatDuration,
+  getValidConfig,
+  handleSpotifyRequest,
+} from './utils.js';
 
 const getAlbums: tool<{
   albumIds: z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodString>]>;
