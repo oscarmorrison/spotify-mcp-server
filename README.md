@@ -40,10 +40,12 @@ Then add the server to your MCP client (see [Client setup](#client-setup) below)
 
 ## Example prompts
 
-- _"Play Elvis's first song"_
-- _"Create a Taylor Swift / Slipknot fusion playlist"_
-- _"Copy all the techno tracks from my workout playlist to my work playlist"_
-- _"Turn the volume down a bit"_
+- _"Build me a 30-track Sunday morning playlist — mellow indie folk, nothing I've played in the last month"_
+- _"Split my 'Liked Songs' into playlists by genre"_
+- _"Copy all the techno tracks from my workout playlist into a new 'Deep Focus' playlist"_
+- _"Dedupe my 'Road Trip' playlist and reorder it so the high-energy tracks are up front"_
+- _"Make a playlist that bridges Taylor Swift and Slipknot — 20 tracks, gradual transition"_
+- _"Create a cover image prompt for my new playlist, then upload it"_
 
 ## Tools
 
